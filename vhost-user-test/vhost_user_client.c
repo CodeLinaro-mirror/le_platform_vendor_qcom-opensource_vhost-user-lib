@@ -15,6 +15,7 @@
 #include <vhost_user.h>
 
 
+extern size_t strlcpy(char *dst, const char *src, size_t size);
 int receive_reply(int sockfd, char *buf, int buflen)
 {
     struct iovec iov;

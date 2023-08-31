@@ -15,6 +15,28 @@ static int log_debug;
 #define pr_debug(fmt, args...) do {if (log_debug)  printf(fmt, ##args);} while(0)
 #define pr_err(fmt, args...) do { printf(fmt, ##args);} while(0)
 
+//define strlcpy to avoid the banned strncpy
+size_t strlcpy(char *dst, const char *src, size_t size)
+{
+    int copyed = 0;
+    int i;
+
+    if (!dst || !src || (size < 2))
+        return copyed;
+
+    for (i = 0; i < size - 1; i++) {
+        if (*src != '\0') {
+            *dst++ = *src++;
+            copyed++;
+        } else {
+            break;
+        }
+    }
+    *dst = '\0';
+
+    return copyed;
+}
+
 /*
  * return bytes# of read on success or negative val on failure. Update fdnum
  * with number of fds read.
