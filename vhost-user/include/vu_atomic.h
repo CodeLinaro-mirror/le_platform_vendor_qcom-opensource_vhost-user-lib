@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2015 Cavium, Inc
  * Copyright(c) 2020 Arm Limited
+ */
+
+/* Changes from Qualcomm Innovation Center are provided under the following license:
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
 #ifndef _ATOMIC_ARM64_H_

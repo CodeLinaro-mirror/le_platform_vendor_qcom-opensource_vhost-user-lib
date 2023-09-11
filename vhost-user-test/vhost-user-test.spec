@@ -2,7 +2,7 @@ Name: vhost-user-test
 Version: 1.0
 Release: r1
 Summary: test cases for vhost user lib
-License: BSD-3
+License: BSD-3-Clause-Clear
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires: make libstd vhost-user-lib

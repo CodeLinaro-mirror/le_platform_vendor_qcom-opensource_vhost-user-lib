@@ -2,7 +2,7 @@ Name: vhost-user-lib
 Version: 1.0
 Release: r1
 Summary: lib for vhost user protocol
-License: BSD-3-Clause
+License: BSD-3-Clause-Clear
 Group: vhost-user-lib
 Source0: %{name}-%{version}.tar.gz
 
@@ -15,7 +15,7 @@ Vhost user library which provide APIs to process the vhost user message.
 %package devel
 Summary: Headers
 Group: vhost-user-lib
-License: BSD-3-Clause
+License: BSD-3-Clause-Clear
 Requires: %{name} = %{version}-%{release}
 
 
