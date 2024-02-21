@@ -63,7 +63,7 @@ alloc_vring_queue(struct vhost_user_dev *dev, uint32_t vring_idx)
             pr_err("failed to allocate memory for vring %u.\n", i);
             return -1;
         }
-        init_vring_queue(dev, vq, vring_idx);
+        init_vring_queue(dev, vq, i);
         dev->virtqueue[i] = vq;
     }
 
@@ -120,10 +120,10 @@ vhost_user_get_features(struct vhost_user_dev *dev,
     if (dev->dev_ops->get_features)
         features = dev->dev_ops->get_features(dev);
 
-    ctx->msg.payload.u64 = features & VHOST_USER_SUPPORT_FEAT;
+    ctx->msg.payload.u64 = features | VHOST_USER_SUPPORT_FEAT;
     ctx->msg.size = sizeof(ctx->msg.payload.u64);
     ctx->fd_num = 0;
-    pr_debug("get features %lx \n", features);
+    pr_debug("get features %lx \n", ctx->msg.payload.u64);
 
     return VHOST_MSG_RESULT_REPLY;
 }
