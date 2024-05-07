@@ -26,10 +26,8 @@ static int log_debug;
 #define pr_debug(fmt, args...) do {if (log_debug)  printf(fmt, ##args);} while(0)
 #define pr_err(fmt, args...) do { printf(fmt, ##args);} while(0)
 
-// please update this micro when support new feature.
-#define VHOST_USER_SUPPORT_FEAT   (1UL << VIRTIO_F_INDIRECT_DESC  \
-                                | 1UL << VIRTIO_F_EVENT_IDX    \
-                                | 1UL << VIRTIO_F_VERSION_1)    \
+// Enable the feature VIRTIO_F_VERSION_1 by default for all the devices.
+#define VHOST_USER_SUPPORT_FEAT  (1UL << VIRTIO_F_VERSION_1)
 
 typedef struct vhost_message_handler {
     const char *description;
@@ -137,6 +135,7 @@ vhost_user_set_features(struct vhost_user_dev *dev,
     if (dev->dev_ops->set_features)
         dev->dev_ops->set_features(dev, features);
 
+    dev->negotiated_feats = features;
     pr_debug("set features: 0x%lx\n", features);
 
     return VHOST_MSG_RESULT_OK;
