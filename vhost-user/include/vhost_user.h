@@ -156,6 +156,14 @@ struct vhost_vring_file {
     int fd;
 };
 
+struct vhost_device_config {
+    uint32_t offset;
+    uint32_t size;
+    uint32_t flag;
+#define VHOST_USER_MAX_CONFIG_SIZE 0xf00
+    char payload[VHOST_USER_MAX_CONFIG_SIZE];
+};
+
 // Virtual address in VMM (qcrosvm)
 struct vhost_vring_addr {
     uint32_t index;
@@ -230,6 +238,7 @@ typedef struct VhostUserMsg {
         uint64_t u64;
         struct vhost_vring_state state;
         struct vhost_vring_addr addr;
+        struct vhost_device_config config;
         VhostUserMemory memory;
         VhostUserVringArea area;
     } payload;
@@ -272,6 +281,8 @@ struct vhost_dev_ops {
     uint64_t (*get_features)(struct vhost_user_dev *dev);
     void (*set_protocol_features)(struct vhost_user_dev *dev, uint64_t features);
     uint64_t (*get_protocol_features)(struct vhost_user_dev *dev);
+    int (*get_config)(struct vhost_user_dev *dev, uint32_t offset, uint32_t size, char *payload);
+    int (*set_config)(struct vhost_user_dev *dev, uint32_t offset, uint32_t size, uint32_t flag, char *payload);
     int (*set_vring_state)(struct vhost_user_dev *dev, uint32_t idx, uint32_t state);
 };
 
