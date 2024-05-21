@@ -270,6 +270,8 @@ struct vhost_memory {
 struct vhost_dev_ops {
     void (*set_features)(struct vhost_user_dev *dev, uint64_t features);
     uint64_t (*get_features)(struct vhost_user_dev *dev);
+    void (*set_protocol_features)(struct vhost_user_dev *dev, uint64_t features);
+    uint64_t (*get_protocol_features)(struct vhost_user_dev *dev);
     int (*set_vring_state)(struct vhost_user_dev *dev, uint32_t idx, uint32_t state);
 };
 
