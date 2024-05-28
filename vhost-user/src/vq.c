@@ -163,11 +163,12 @@ vq_getchain(struct vhost_virtqueue *vq, struct iovec *iov, int niov, int *ridx)
             return -1;
         }
         vdir = &vq->desc[next];
-        if ((vdir->flags & VIRTQ_DESC_F_INDIRECT) == 0) {
+        if (dev->negotiated_feats & (1UL << VIRTIO_F_INDIRECT_DESC))
+        {
+            pr_err("ERROR, not support indirect description\n");
+        } else {
             _vq_record(i, vdir, dev, iov, niov);
             i++;
-        } else {
-            pr_err("ERROR, not support indirect description\n");
         }
         if ((vdir->flags & VIRTQ_DESC_F_NEXT) == 0)
             break;
@@ -237,6 +238,7 @@ vq_endchains(struct vhost_virtqueue *vq)
 {
     uint16_t event_idx, new_idx, old_idx;
     int intr;
+    struct vhost_user_dev *dev = vq->vudev;
 
     /*
      * Interrupt generation: if we're using EVENT_IDX,
@@ -251,7 +253,7 @@ vq_endchains(struct vhost_virtqueue *vq)
     old_idx = vq->saved_used_idx;
     vq->saved_used_idx = new_idx = vq->used->idx;
 
-    if (vq->negotiated_caps & VIRTIO_F_EVENT_IDX) {
+    if (dev->negotiated_feats & (1UL << VIRTIO_F_EVENT_IDX)) {
         event_idx = *virtq_used_event(vq);
         /*
         * This calculation is per docs and the kernel

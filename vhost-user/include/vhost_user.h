@@ -183,7 +183,6 @@ struct vhost_virtqueue {
 #define VIRTIO_INVALID_EVENTFD      (-1)
     bool            started;
     uint16_t        saved_used_idx;
-    uint64_t        negotiated_caps;
     struct vhost_user_dev   *vudev;
 
     /* Used to notify the guest (trigger interrupt) */
@@ -282,6 +281,7 @@ struct vhost_user_dev {
     uint8_t     nr_vring;
     struct vhost_user_socket    vsocket;
     struct vhost_dev_ops *dev_ops;
+    uint64_t        negotiated_feats;
 };
 
 static uint64_t
