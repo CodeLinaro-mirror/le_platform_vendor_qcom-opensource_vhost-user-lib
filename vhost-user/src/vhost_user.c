@@ -211,6 +211,10 @@ vhost_user_set_mem_table(struct vhost_user_dev *dev,
         return -1;
     }
     dev->mem = calloc(sizeof(struct vhost_memory) + sizeof(struct vhost_mem_region) * memory->nregions, 1);
+    if (dev->mem == NULL) {
+        pr_err("failed to allocate memory\n");
+        return -1;
+    }
     for (i = 0; i < memory->nregions; i++) {
         reg = &dev->mem->regions[i];
 
@@ -671,18 +675,15 @@ vhost_user_msg_handler(struct vhost_user_dev *dev, uint32_t fd)
 
     switch (msg_result) {
     case VHOST_MSG_RESULT_ERR:
-        pr_err("processing %s failed.\n",
-            msg_handler->description);
+        pr_err("process failed.\n");
         handled = true;
         break;
     case VHOST_MSG_RESULT_OK:
-        pr_debug("processing %s succeeded.\n",
-            msg_handler->description);
+        pr_debug("process succeeded.\n");
         handled = true;
         break;
     case VHOST_MSG_RESULT_REPLY:
-        pr_debug("processing %s succeeded and needs reply.\n",
-            msg_handler->description);
+        pr_debug("processing succeeded and needs reply.\n");
         send_vhost_reply(dev, fd, &ctx);
         handled = true;
         break;
