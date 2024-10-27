@@ -26,10 +26,8 @@ static int log_debug;
 #define pr_debug(fmt, args...) do {if (log_debug)  printf(fmt, ##args);} while(0)
 #define pr_err(fmt, args...) do { printf(fmt, ##args);} while(0)
 
-// please update this micro when support new feature.
-#define VHOST_USER_SUPPORT_FEAT   (1UL << VIRTIO_F_INDIRECT_DESC  \
-                                | 1UL << VIRTIO_F_EVENT_IDX    \
-                                | 1UL << VIRTIO_F_VERSION_1)    \
+// Enable the feature VIRTIO_F_VERSION_1 by default for all the devices.
+#define VHOST_USER_SUPPORT_FEAT  (1UL << VIRTIO_F_VERSION_1)
 
 typedef struct vhost_message_handler {
     const char *description;
@@ -133,16 +131,11 @@ vhost_user_set_features(struct vhost_user_dev *dev,
             struct vhu_msg_context *ctx)
 {
     uint64_t features = ctx->msg.payload.u64;
-    uint64_t support_features = features & VHOST_USER_SUPPORT_FEAT;
-
-    if (features != support_features) {
-        pr_err("the feature set %lx is not supported\n", features);
-        return VHOST_MSG_RESULT_ERR;
-    }
 
     if (dev->dev_ops->set_features)
         dev->dev_ops->set_features(dev, features);
 
+    dev->negotiated_feats = features;
     pr_debug("set features: 0x%lx\n", features);
 
     return VHOST_MSG_RESULT_OK;
@@ -218,6 +211,10 @@ vhost_user_set_mem_table(struct vhost_user_dev *dev,
         return -1;
     }
     dev->mem = calloc(sizeof(struct vhost_memory) + sizeof(struct vhost_mem_region) * memory->nregions, 1);
+    if (dev->mem == NULL) {
+        pr_err("failed to allocate memory\n");
+        return -1;
+    }
     for (i = 0; i < memory->nregions; i++) {
         reg = &dev->mem->regions[i];
 
@@ -678,18 +675,15 @@ vhost_user_msg_handler(struct vhost_user_dev *dev, uint32_t fd)
 
     switch (msg_result) {
     case VHOST_MSG_RESULT_ERR:
-        pr_err("processing %s failed.\n",
-            msg_handler->description);
+        pr_err("process failed.\n");
         handled = true;
         break;
     case VHOST_MSG_RESULT_OK:
-        pr_debug("processing %s succeeded.\n",
-            msg_handler->description);
+        pr_debug("process succeeded.\n");
         handled = true;
         break;
     case VHOST_MSG_RESULT_REPLY:
-        pr_debug("processing %s succeeded and needs reply.\n",
-            msg_handler->description);
+        pr_debug("processing succeeded and needs reply.\n");
         send_vhost_reply(dev, fd, &ctx);
         handled = true;
         break;
