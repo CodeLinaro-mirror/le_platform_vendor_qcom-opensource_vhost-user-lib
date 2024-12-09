@@ -766,6 +766,8 @@ vhost_user_deinit_device(struct vhost_user_dev *dev)
         dev->virtqueue[i] = NULL;
 	}
 
+    dev->nr_vring = 0;
+
     if (dev->mem) {
         free_mem_region(dev);
         free(dev->mem);
