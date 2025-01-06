@@ -162,7 +162,15 @@ create_unix_socket(struct vhost_user_socket *vsocket, char *socket_path)
     if (fd < 0)
         return -1;
 
-    unlink(socket_path);
+    if (access(socket_path, F_OK) == 0) {
+        if (unlink(socket_path) < 0) {
+            pr_err("failed to create socket file, "
+                "%s is used by other process!!\n", socket_path);
+            return -1;
+        }
+        pr_info("Notice!! the orignal file: %s is removed, "
+            "please make sure no other process use it! \n", socket_path);
+    }
     memset(un, 0, sizeof(*un));
     un->sun_family = AF_UNIX;
     strlcpy(un->sun_path, socket_path, sizeof(un->sun_path));
