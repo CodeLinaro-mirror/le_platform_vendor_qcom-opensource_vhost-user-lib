@@ -68,7 +68,10 @@ read_fd_message(int sockfd, char *buf, int buflen, int *fds, int max_fds, int *f
     msgh.msg_controllen = sizeof(control);
 
     pr_debug("wait for message..\n");
-    ret = recvmsg(sockfd, &msgh, 0);
+    do {
+        ret = recvmsg(sockfd, &msgh, 0);
+    } while (ret < 0 && errno == EINTR);
+
     if (ret < 0) {
         pr_err("recvmsg failed on fd %d (%s)\n",
                 sockfd, strerror(errno));
