@@ -491,6 +491,58 @@ vhost_user_set_vring_call(struct vhost_user_dev *dev,
     return VHOST_MSG_RESULT_OK;
 }
 
+static bool
+support_protocol_feature(struct vhost_user_dev *dev)
+{
+    if (dev && dev->dev_ops && dev->dev_ops->get_features) {
+        if (dev->dev_ops->get_features(dev) & VHOST_USER_F_PROTOCOL_FEATURES)
+            return true;
+    }
+    return false;
+}
+
+/*
+ * The protocol features that we support are requested.
+ */
+static int
+vhost_user_get_protocol_features(struct vhost_user_dev *dev,
+            struct vhu_msg_context *ctx)
+{
+    uint64_t features = 0;
+
+    if (support_protocol_feature(dev) && dev->dev_ops->get_protocol_features) {
+        features = dev->dev_ops->get_protocol_features(dev);
+    } else {
+        pr_err("failed to get protocol features\n");
+        return VHOST_MSG_RESULT_ERR;
+    }
+
+    ctx->msg.payload.u64 = features;
+    ctx->msg.size = sizeof(ctx->msg.payload.u64);
+    ctx->fd_num = 0;
+    pr_debug("get protocol features %lx \n", ctx->msg.payload.u64);
+
+    return VHOST_MSG_RESULT_REPLY;
+}
+
+static int
+vhost_user_set_protocol_features(struct vhost_user_dev *dev,
+            struct vhu_msg_context *ctx)
+{
+    uint64_t features = ctx->msg.payload.u64;
+
+    if (support_protocol_feature(dev) && dev->dev_ops->set_protocol_features) {
+        dev->dev_ops->set_protocol_features(dev, features);
+    } else {
+        pr_err("failed to set protocol features\n");
+        return VHOST_MSG_RESULT_ERR;
+    }
+
+    pr_debug("set protocol features: 0x%lx\n", features);
+    return VHOST_MSG_RESULT_OK;
+}
+
+
 #define VHOST_MESSAGE_HANDLER(id, handler, accepts_fd) \
     [id] = { #id, handler, accepts_fd },
 
@@ -511,8 +563,8 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_GET_VRING_BASE, vhost_user_get_vring_base, fals
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_KICK, vhost_user_set_vring_kick, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_CALL, vhost_user_set_vring_call, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ERR, NULL, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, NULL, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, NULL, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_features, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, NULL, false) \
