@@ -599,6 +599,17 @@ vhost_user_set_protocol_features(struct vhost_user_dev *dev,
     return VHOST_MSG_RESULT_OK;
 }
 
+static int
+vhost_user_set_vring_enable(struct vhost_user_dev *dev,
+        struct vhu_msg_context *ctx)
+{
+    /* we do not maintain the enbale and disable status for vring, just ignore this.
+    * the vring is started and enabled when VHOST_USER_SET_VRING_KICK is processed.
+    * the vring is stopped and disabled when VHOST_USER_GET_VRING_BASE is processed.
+    * If there is more complicated case, we will add support.
+    */
+    return VHOST_MSG_RESULT_OK;
+}
 
 #define VHOST_MESSAGE_HANDLER(id, handler, accepts_fd) \
     [id] = { #id, handler, accepts_fd },
@@ -623,7 +634,7 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ERR, NULL, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_features, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, NULL, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, NULL, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_BACKEND_REQ_FD, NULL, true) \
