@@ -142,6 +142,63 @@ vhost_user_set_features(struct vhost_user_dev *dev,
 }
 
 /*
+ * The config that we support are requested.
+ */
+static int
+vhost_user_get_config(struct vhost_user_dev *dev,
+            struct vhu_msg_context *ctx)
+{
+    int ret;
+
+    uint32_t offset = ctx->msg.payload.config.offset;
+    uint32_t size = ctx->msg.payload.config.size;
+    char *payload = &(ctx->msg.payload.config.payload);
+
+    if (dev->dev_ops->get_config) {
+        ret = dev->dev_ops->get_config(dev, offset, size, payload);
+
+        if (ret < 0) {
+            pr_err("failed to get config! offset: 0x%x size: 0x%x \n", offset, size);
+            /* vhost-user back-end uses zero length of payload to indicate
+            an error to the vhost-user front-end.*/
+            ctx->msg.payload.config.size = 0;
+        }
+    } else {
+        pr_err("set config is not support!\n");
+    }
+
+    pr_debug("get config, offset: 0x%x size: 0x%x \n", offset, size);
+
+    return VHOST_MSG_RESULT_REPLY;
+}
+
+static int
+vhost_user_set_config(struct vhost_user_dev *dev,
+            struct vhu_msg_context *ctx)
+{
+    int ret;
+    uint32_t offset = ctx->msg.payload.config.offset;
+    uint32_t size = ctx->msg.payload.config.size;
+    uint32_t flag = ctx->msg.payload.config.flag;
+    char *payload = &(ctx->msg.payload.config.payload);
+
+    if (dev->dev_ops->set_config) {
+            ret = dev->dev_ops->set_config(dev, offset, size, flag, payload);
+        if (ret < 0) {
+            pr_err("failed to set config! offset: 0x%x size: 0x%x flag: 0x%x\n",
+                offset, size, flag);
+            return VHOST_MSG_RESULT_ERR;
+        }
+    } else {
+        pr_err("set config is not support!\n");
+    }
+
+    pr_debug("set config, offset: 0x%x size: 0x%x flag: 0x%x\n", offset, size, flag);
+
+    return VHOST_MSG_RESULT_OK;
+}
+
+/*
  * This function just returns success at the moment unless
  * the device hasn't been initialised.
  */
@@ -491,6 +548,69 @@ vhost_user_set_vring_call(struct vhost_user_dev *dev,
     return VHOST_MSG_RESULT_OK;
 }
 
+static bool
+support_protocol_feature(struct vhost_user_dev *dev)
+{
+    if (dev && dev->dev_ops && dev->dev_ops->get_features) {
+        if (dev->dev_ops->get_features(dev) & (1UL << VHOST_USER_F_PROTOCOL_FEATURES))
+            return true;
+    }
+    return false;
+}
+
+/*
+ * The protocol features that we support are requested.
+ */
+static int
+vhost_user_get_protocol_features(struct vhost_user_dev *dev,
+            struct vhu_msg_context *ctx)
+{
+    uint64_t features = 0;
+
+    if (support_protocol_feature(dev) && dev->dev_ops->get_protocol_features) {
+        features = dev->dev_ops->get_protocol_features(dev);
+    } else {
+        pr_err("failed to get protocol features\n");
+        return VHOST_MSG_RESULT_ERR;
+    }
+
+    ctx->msg.payload.u64 = features;
+    ctx->msg.size = sizeof(ctx->msg.payload.u64);
+    ctx->fd_num = 0;
+    pr_debug("get protocol features %lx \n", ctx->msg.payload.u64);
+
+    return VHOST_MSG_RESULT_REPLY;
+}
+
+static int
+vhost_user_set_protocol_features(struct vhost_user_dev *dev,
+            struct vhu_msg_context *ctx)
+{
+    uint64_t features = ctx->msg.payload.u64;
+
+    if (support_protocol_feature(dev) && dev->dev_ops->set_protocol_features) {
+        dev->dev_ops->set_protocol_features(dev, features);
+    } else {
+        pr_err("failed to set protocol features\n");
+        return VHOST_MSG_RESULT_ERR;
+    }
+
+    pr_debug("set protocol features: 0x%lx\n", features);
+    return VHOST_MSG_RESULT_OK;
+}
+
+static int
+vhost_user_set_vring_enable(struct vhost_user_dev *dev,
+        struct vhu_msg_context *ctx)
+{
+    /* we do not maintain the enbale and disable status for vring, just ignore this.
+    * the vring is started and enabled when VHOST_USER_SET_VRING_KICK is processed.
+    * the vring is stopped and disabled when VHOST_USER_GET_VRING_BASE is processed.
+    * If there is more complicated case, we will add support.
+    */
+    return VHOST_MSG_RESULT_OK;
+}
+
 #define VHOST_MESSAGE_HANDLER(id, handler, accepts_fd) \
     [id] = { #id, handler, accepts_fd },
 
@@ -511,17 +631,17 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_GET_VRING_BASE, vhost_user_get_vring_base, fals
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_KICK, vhost_user_set_vring_kick, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_CALL, vhost_user_set_vring_call, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ERR, NULL, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, NULL, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, NULL, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_features, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, NULL, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, NULL, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_BACKEND_REQ_FD, NULL, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENDIAN, NULL, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, NULL, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, NULL, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, vhost_user_get_config, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, vhost_user_set_config, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_CRYPTO_CREATE_SESS, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_CRYPTO_CLOSE_SESS, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_ADVISE, NULL, false) \
