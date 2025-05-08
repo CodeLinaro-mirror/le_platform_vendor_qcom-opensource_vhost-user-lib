@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <systemd/sd-daemon.h>
 #include "vu_socket.h"
 
 static int log_info = 1;
@@ -210,6 +211,12 @@ vhost_user_start_server(struct vhost_user_socket *vsocket)
     ret = listen(fd, 1);
     if (ret < 0)
         goto err;
+
+    // notify systemd for status ready.
+    if (sd_notify(0, "READY=1") < 0) {
+        pr_err("failed to notify systemd: %s\n", strerror(errno));
+        goto err;
+    }
 
     fd = accept(fd, NULL, NULL);
     if (fd < 0)

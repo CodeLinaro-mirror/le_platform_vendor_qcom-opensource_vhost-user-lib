@@ -26,6 +26,7 @@ link_directories(${CMAKE_INSTALL_LIBDIR})
 
 target_link_libraries (vhostuserlib c)
 target_link_libraries (vhostuserlib pthread)
+target_link_libraries (vhostuserlib systemd)
 
 
 install(DIRECTORY include/  DESTINATION include)
