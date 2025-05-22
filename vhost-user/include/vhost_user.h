@@ -44,7 +44,7 @@
 /** Indicate whether protocol features negotiation is supported. */
 #define VHOST_USER_F_PROTOCOL_FEATURES  30
 
-#define VHOST_MEMORY_MAX_NREGIONS 8
+#define VHOST_MEMORY_MAX_NREGIONS 32
 
 #define VIRTIO_F_ANY_LAYOUT        27
 
