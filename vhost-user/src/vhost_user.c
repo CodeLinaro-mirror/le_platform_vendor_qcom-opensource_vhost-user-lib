@@ -50,6 +50,12 @@ alloc_vring_queue(struct vhost_user_dev *dev, uint32_t vring_idx)
 {
     struct vhost_virtqueue *vq;
     uint32_t i;
+    int ret = 0;
+
+    if (!dev) {
+        pr_err("Invalid dev pointer in alloc_vring_queue\n");
+        return -1;
+    }
 
     /* Also allocate holes, if any, up to requested vring index. */
     for (i = 0; i <= vring_idx; i++) {
@@ -59,10 +65,22 @@ alloc_vring_queue(struct vhost_user_dev *dev, uint32_t vring_idx)
         vq = calloc(sizeof(struct vhost_virtqueue), 1);
         if (vq == NULL) {
             pr_err("failed to allocate memory for vring %u.\n", i);
-            return -1;
+            ret = -1;
+            break;
         }
         init_vring_queue(dev, vq, i);
         dev->virtqueue[i] = vq;
+    }
+
+    if (ret < 0) {
+        // Cleanup on failure
+        for (i = 0; i <= vring_idx; i++) {
+            if (dev->virtqueue[i]) {
+                free(dev->virtqueue[i]);
+                dev->virtqueue[i] = NULL;
+            }
+        }
+        return ret;
     }
 
     dev->nr_vring = MAX(dev->nr_vring, vring_idx + 1);
@@ -75,6 +93,11 @@ vhost_user_check_and_alloc_queue_pair(struct vhost_user_dev *dev,
             struct vhu_msg_context *ctx)
 {
     uint32_t vring_idx;
+
+    if (!dev || !ctx) {
+        pr_err("Invalid dev or ctx pointer in vhost_user_check_and_alloc_queue_pair\n");
+        return -1;
+    }
 
     switch (ctx->msg.request.frontend) {
     case VHOST_USER_SET_VRING_KICK:
@@ -305,7 +328,23 @@ static int
 vhost_user_set_vring_num(struct vhost_user_dev *dev,
             struct vhu_msg_context *ctx)
 {
-    struct vhost_virtqueue *vq = dev->virtqueue[ctx->msg.payload.state.index];
+    struct vhost_virtqueue *vq;
+
+    if (!dev || !ctx) {
+        pr_err("Invalid dev or ctx pointer in vhost_user_set_vring_num\n");
+        return VHOST_MSG_RESULT_ERR;
+    }
+
+    if (ctx->msg.payload.state.index >= VHOST_MAX_VRING) {
+        pr_err("Invalid vring index: %u\n", ctx->msg.payload.state.index);
+        return VHOST_MSG_RESULT_ERR;
+    }
+
+    vq = dev->virtqueue[ctx->msg.payload.state.index];
+    if (!vq) {
+        pr_err("Invalid virtqueue pointer for index %u\n", ctx->msg.payload.state.index);
+        return VHOST_MSG_RESULT_ERR;
+    }
 
     if (ctx->msg.payload.state.num > 32768) {
         pr_err("invalid virtqueue size %u\n",
@@ -354,6 +393,10 @@ qva_to_vva(struct vhost_user_dev *dev, uint64_t qva)
 static void
 setup_ring_addr(struct vhost_user_dev *dev, struct vhost_virtqueue *vq)
 {
+    if (!dev || !vq) {
+        pr_err("Invalid dev or vq pointer in setup_ring_addr\n");
+        return;
+    }
 
     /* The addresses are converted from VMM virtual to Vhost virtual. */
     if (vq->desc && vq->avail && vq->used)
@@ -505,6 +548,10 @@ vhost_user_set_vring_kick(struct vhost_user_dev *dev,
     pr_debug("vring kick idx:%d file:%d\n", file.index, file.fd);
 
     vq = dev->virtqueue[file.index];
+    if (!vq) {
+        pr_err("Invalid virtqueue pointer for index %d\n", file.index);
+        return VHOST_MSG_RESULT_ERR;
+    }
 
     if (vq->started) {
         pr_err("vq has started, please reset the ring before using new fd\n");
@@ -539,6 +586,10 @@ vhost_user_set_vring_call(struct vhost_user_dev *dev,
     pr_debug("vring call idx:%d file:%d\n", file.index, file.fd);
 
     vq = dev->virtqueue[file.index];
+    if (!vq) {
+        pr_err("Invalid virtqueue pointer for index %d\n", file.index);
+        return VHOST_MSG_RESULT_ERR;
+    }
 
     if (vq->callfd >= 0)
         close(vq->callfd);
@@ -851,8 +902,12 @@ free_mem_region(struct vhost_user_dev *dev)
 	for (i = 0; i < dev->mem->nregions; i++) {
 		reg = &dev->mem->regions[i];
 		if (reg->host_user_addr) {
-			munmap(reg->mmap_addr, reg->mmap_size);
-			close(reg->fd);
+			if (reg->mmap_addr) {
+				munmap(reg->mmap_addr, reg->mmap_size);
+			}
+			if (reg->fd >= 0) {
+				close(reg->fd);
+			}
 		}
 	}
 }
@@ -875,15 +930,21 @@ vhost_user_deinit_device(struct vhost_user_dev *dev)
 	uint32_t i;
     struct vhost_virtqueue *vq;
 
-    if (dev->vsocket.socket_fd)
+    if (!dev) {
+        return;
+    }
+
+    if (dev->vsocket.socket_fd > 0)
         close(dev->vsocket.socket_fd);
 
 	for (i = 0; i < dev->nr_vring; i++) {
         vq = dev->virtqueue[i];
-        vhost_user_set_vring_state(dev, vq, 0);
-		cleanup_vq(vq);
-        free(vq);
-        dev->virtqueue[i] = NULL;
+        if (vq) {
+            vhost_user_set_vring_state(dev, vq, 0);
+            cleanup_vq(vq);
+            free(vq);
+            dev->virtqueue[i] = NULL;
+        }
 	}
 
     dev->nr_vring = 0;

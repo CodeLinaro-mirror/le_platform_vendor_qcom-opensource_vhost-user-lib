@@ -53,6 +53,16 @@ static int log_debug;
 int
 vq_has_data(struct vhost_virtqueue *vq)
 {
+    if (!vq) {
+        pr_err("Invalid virtqueue pointer in vq_has_data\n");
+        return 0;
+    }
+
+    if (!vq->avail) {
+        pr_err("Invalid avail ring pointer in vq_has_data\n");
+        return 0;
+    }
+
     if (vq->started && vq->avail->idx != vq->last_avail_idx)
         return 1;
     return 0;
@@ -61,7 +71,15 @@ vq_has_data(struct vhost_virtqueue *vq)
 static uint64_t
 gpa_to_vva(struct vhost_user_dev *dev, uint64_t gpa, uint64_t len)
 {
-    assert(dev->mem != NULL);
+    if (!dev) {
+        pr_err("Invalid dev pointer in gpa_to_vva\n");
+        return 0;
+    }
+
+    if (!dev->mem) {
+        pr_err("Invalid mem pointer in gpa_to_vva\n");
+        return 0;
+    }
 
     return vhost_va_from_guest_pa(dev->mem, gpa, len);
 }
@@ -75,8 +93,9 @@ static inline void
 _vq_record(int i, struct virtq_desc *vd, struct vhost_user_dev *dev, struct iovec *iov,
     int n_iov)
 {
-    if (i >= n_iov)
+    if (i >= n_iov || !vd || !dev || !iov)
         return;
+
     iov[i].iov_base = (void *)gpa_to_vva(dev, vd->addr, vd->len);
     iov[i].iov_len = vd->len;
 }
@@ -120,8 +139,23 @@ vq_getchain(struct vhost_virtqueue *vq, struct iovec *iov, int niov, int *ridx)
     uint32_t ndesc;
     uint32_t idx, next;
     struct virtq_desc *vdir;
-    struct vhost_user_dev *dev = vq->vudev;
+    struct vhost_user_dev *dev;
 
+    if (!vq || !ridx) {
+        pr_err("Invalid vq or ridx pointer in vq_getchain\n");
+        return -1;
+    }
+
+    dev = vq->vudev;
+    if (!dev) {
+        pr_err("Invalid dev pointer in vq_getchain\n");
+        return -1;
+    }
+
+    if (!vq->avail || !vq->desc) {
+        pr_err("Invalid avail or desc ring pointer in vq_getchain\n");
+        return -1;
+    }
 
     /*
      * Note: it's the responsibility of the guest not to
@@ -167,7 +201,9 @@ vq_getchain(struct vhost_virtqueue *vq, struct iovec *iov, int niov, int *ridx)
         {
             pr_err("ERROR, not support indirect description\n");
         } else {
-            _vq_record(i, vdir, dev, iov, niov);
+            if (iov) {
+                _vq_record(i, vdir, dev, iov, niov);
+            }
             i++;
         }
         if ((vdir->flags & VIRTQ_DESC_F_NEXT) == 0)
@@ -186,6 +222,11 @@ vq_getchain(struct vhost_virtqueue *vq, struct iovec *iov, int niov, int *ridx)
 void
 vq_retchains(struct vhost_virtqueue *vq, uint16_t n_chains)
 {
+    if (!vq) {
+        pr_err("Invalid virtqueue pointer in vq_retchains\n");
+        return;
+    }
+
     vq->last_avail_idx -= n_chains;
 }
 
@@ -202,6 +243,16 @@ vq_relchain(struct vhost_virtqueue *vq, uint16_t idx, uint32_t iolen)
     struct virtq_used *vuh;
     struct virtq_used_elem *vue;
     uint16_t mask;
+
+    if (!vq) {
+        pr_err("Invalid virtqueue pointer in vq_relchain\n");
+        return;
+    }
+
+    if (!vq->used) {
+        pr_err("Invalid used ring pointer in vq_relchain\n");
+        return;
+    }
 
     /*
      * Notes:
@@ -238,7 +289,23 @@ vq_endchains(struct vhost_virtqueue *vq)
 {
     uint16_t event_idx, new_idx, old_idx;
     int intr;
-    struct vhost_user_dev *dev = vq->vudev;
+    struct vhost_user_dev *dev;
+
+    if (!vq) {
+        pr_err("Invalid virtqueue pointer in vq_endchains\n");
+        return;
+    }
+
+    dev = vq->vudev;
+    if (!dev) {
+        pr_err("Invalid dev pointer in vq_endchains\n");
+        return;
+    }
+
+    if (!vq->used) {
+        pr_err("Invalid used ring pointer in vq_endchains\n");
+        return;
+    }
 
     /*
      * Interrupt generation: if we're using EVENT_IDX,
@@ -262,12 +329,20 @@ vq_endchains(struct vhost_virtqueue *vq)
         intr = (uint16_t)(new_idx - event_idx - 1) <
             (uint16_t)(new_idx - old_idx);
     } else {
+        if (!vq->avail) {
+            pr_err("Invalid avail ring pointer in vq_endchains\n");
+            return;
+        }
         intr = new_idx != old_idx &&
             !(vq->avail->flags & VIRTQ_AVAIL_F_NO_INTERRUPT);
     }
     if (intr) {
         pr_debug("%s: inject irq \n", __func__);
-        if (eventfd_write(vq->callfd, 1) < 0)
-            pr_err("Failed to write callfd !\n");
+        if (vq->callfd >= 0) {
+            if (eventfd_write(vq->callfd, 1) < 0)
+                pr_err("Failed to write callfd !\n");
+        } else {
+            pr_err("Invalid callfd in vq_endchains\n");
+        }
     }
 }
