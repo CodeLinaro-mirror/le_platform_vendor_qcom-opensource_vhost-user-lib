@@ -875,16 +875,22 @@ vhost_user_deinit_device(struct vhost_user_dev *dev)
 	uint32_t i;
     struct vhost_virtqueue *vq;
 
-    if (dev->vsocket.socket_fd)
-        close(dev->vsocket.socket_fd);
+    if (!dev) {
+        return;
+    }
 
-	for (i = 0; i < dev->nr_vring; i++) {
+    if (dev->vsocket.socket_fd >= 0) {
+        close(dev->vsocket.socket_fd);
+        dev->vsocket.socket_fd = -1;
+    }
+
+    for (i = 0; i < dev->nr_vring; i++) {
         vq = dev->virtqueue[i];
         vhost_user_set_vring_state(dev, vq, 0);
-		cleanup_vq(vq);
+        cleanup_vq(vq);
         free(vq);
         dev->virtqueue[i] = NULL;
-	}
+    }
 
     dev->nr_vring = 0;
 
