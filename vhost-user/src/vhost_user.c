@@ -934,8 +934,10 @@ vhost_user_deinit_device(struct vhost_user_dev *dev)
         return;
     }
 
-    if (dev->vsocket.socket_fd > 0)
+    if (dev->vsocket.socket_fd >= 0) {
         close(dev->vsocket.socket_fd);
+        dev->vsocket.socket_fd = -1;
+    }
 
 	for (i = 0; i < dev->nr_vring; i++) {
         vq = dev->virtqueue[i];
