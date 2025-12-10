@@ -63,6 +63,7 @@ vq_has_data(struct vhost_virtqueue *vq)
         return 0;
     }
 
+    atomic_thread_fence();
     if (vq->started && vq->avail->idx != vq->last_avail_idx)
         return 1;
     return 0;
