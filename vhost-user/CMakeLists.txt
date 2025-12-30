@@ -7,6 +7,9 @@ set (VHOST_USER_LIB_INC_PATH ${CMAKE_CURRENT_LIST_DIR}/include/)
 #enable test related macros
 #add_definitions(-D__TEST__)
 
+#enable ARM64 architecture specific code
+add_definitions(-DARCH_ARM64)
+
 set(VHOST_USER_LIB_SOURCE_FILES
       src/vhost_user.c
       src/socket.c
