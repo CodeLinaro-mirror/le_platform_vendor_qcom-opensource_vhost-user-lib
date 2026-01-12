@@ -15,7 +15,7 @@
 #include <vhost_user.h>
 
 
-extern size_t strlcpy(char *dst, const char *src, size_t size);
+extern size_t safe_strlcpy(char *dst, const char *src, size_t size);
 int receive_reply(int sockfd, char *buf, int buflen)
 {
     struct iovec iov;
@@ -280,7 +280,7 @@ int run_vhost_user_client(char *socket_path) {
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
     memset(&sock_addr, 0, sizeof(sock_addr));
     sock_addr.sun_family = AF_UNIX;
-    strlcpy(sock_addr.sun_path, (char *)socket_path, sizeof(sock_addr.sun_path));
+    safe_strlcpy(sock_addr.sun_path, (char *)socket_path, sizeof(sock_addr.sun_path));
     printf("sock path = %s\n", sock_addr.sun_path);
     sock_addr.sun_path[sizeof(sock_addr.sun_path) - 1] = '\0';
 
