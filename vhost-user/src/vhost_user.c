@@ -42,7 +42,7 @@ init_vring_queue(struct vhost_user_dev *dev, struct vhost_virtqueue *vq, uint32_
     vq->vudev = dev;
     vq->kickfd = VIRTIO_INVALID_EVENTFD;
     vq->callfd = VIRTIO_INVALID_EVENTFD;
-    vq->started = false;
+    atomic_init(&vq->started, false);
 }
 
 int
@@ -528,7 +528,7 @@ vhost_user_get_vring_base(struct vhost_user_dev *dev,
     ctx->fd_num = 0;
 
     vring_invalidate(dev, vq);
-    vq->started = false;
+    atomic_store_explicit(&vq->started, false, memory_order_release);
 
     return VHOST_MSG_RESULT_REPLY;
 }
@@ -559,14 +559,14 @@ vhost_user_set_vring_kick(struct vhost_user_dev *dev,
     }
     vq->kickfd = file.fd;
 
+    atomic_store_explicit(&vq->started, true, memory_order_release);
+
     if (vq->kickfd != VIRTIO_INVALID_EVENTFD) {
         if (vhost_user_set_vring_state(dev, vq, 1) < 0) {
             pr_err("failed to enable the vring!! \n");
             return VHOST_MSG_RESULT_ERR;
         }
     }
-
-    vq->started = true;
 
     return VHOST_MSG_RESULT_OK;
 }

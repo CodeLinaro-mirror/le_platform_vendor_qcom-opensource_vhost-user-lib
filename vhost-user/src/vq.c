@@ -63,9 +63,11 @@ vq_has_data(struct vhost_virtqueue *vq)
         return 0;
     }
 
-    atomic_thread_fence();
-    if (vq->started && vq->avail->idx != vq->last_avail_idx)
-        return 1;
+    if (atomic_load_explicit(&vq->started, memory_order_acquire)) {
+        atomic_thread_fence(memory_order_seq_cst);
+        if (vq->avail->idx != vq->last_avail_idx)
+            return 1;
+    }
     return 0;
 }
 
@@ -317,7 +319,7 @@ vq_endchains(struct vhost_virtqueue *vq)
      * In any case, though, if NOTIFY_ON_EMPTY is set and the
      * entire avail was processed, we need to interrupt always.
      */
-    atomic_thread_fence();
+    atomic_thread_fence(memory_order_seq_cst);
     old_idx = vq->saved_used_idx;
     vq->saved_used_idx = new_idx = vq->used->idx;
 
