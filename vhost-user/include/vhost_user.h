@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdatomic.h>
 #include "vu_vq.h"
 #include "vu_socket.h"
 #include "vu_atomic.h"
@@ -189,7 +190,7 @@ struct vhost_virtqueue {
     uint16_t        last_avail_idx;
     uint16_t        last_used_idx;
 #define VIRTIO_INVALID_EVENTFD      (-1)
-    bool            started;
+    atomic_bool     started;
     uint16_t        saved_used_idx;
     struct vhost_user_dev   *vudev;
 

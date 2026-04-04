@@ -38,11 +38,4 @@
 
 #endif
 
-
-static inline void
-atomic_thread_fence(void)
-{
-    __atomic_thread_fence(__ATOMIC_SEQ_CST);
-}
-
 #endif
