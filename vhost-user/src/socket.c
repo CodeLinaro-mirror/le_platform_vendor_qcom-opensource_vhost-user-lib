@@ -21,8 +21,8 @@ static int log_debug;
 #define pr_debug(fmt, args...) do {if (log_debug)  printf(fmt, ##args);} while(0)
 #define pr_err(fmt, args...) do { printf(fmt, ##args);} while(0)
 
-//define strlcpy to avoid the banned strncpy
-size_t strlcpy(char *dst, const char *src, size_t size)
+//define safe_strlcpy to avoid the banned strncpy
+size_t safe_strlcpy(char *dst, const char *src, size_t size)
 {
     int copyed = 0;
     int i;
@@ -177,7 +177,7 @@ create_unix_socket(struct vhost_user_socket *vsocket, char *socket_path)
     }
     memset(un, 0, sizeof(*un));
     un->sun_family = AF_UNIX;
-    strlcpy(un->sun_path, socket_path, sizeof(un->sun_path));
+    safe_strlcpy(un->sun_path, socket_path, sizeof(un->sun_path));
     un->sun_path[sizeof(un->sun_path) - 1] = '\0';
 
     vsocket->socket_fd = fd;

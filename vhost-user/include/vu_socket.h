@@ -11,6 +11,8 @@ struct vhost_user_socket {
     int socket_fd;
     struct sockaddr_un un;
 };
+
+size_t safe_strlcpy(char *dst, const char *src, size_t size);
 int send_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num);
 int read_fd_message(int sockfd, char *buf, int buflen, int *fds, int max_fds, int *fd_num);
 int create_unix_socket(struct vhost_user_socket *vsocket, char *socket_path);
