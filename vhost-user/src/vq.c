@@ -184,6 +184,14 @@ vq_getchain(struct vhost_virtqueue *vq, struct iovec *iov, int niov, int *ridx)
     }
 
     /*
+     * Ensure ordering between avail->idx and avail->ring/desc.
+     * Without this barrier, backend may observe updated idx
+     * but stale ring/descriptor contents under stress.
+     */
+
+    smp_rmb();
+
+    /*
      * Now count/parse "involved" descriptors starting from
      * the head of the chain.
      *
