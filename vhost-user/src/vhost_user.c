@@ -852,6 +852,21 @@ vhost_user_msg_handler(struct vhost_user_dev *dev, uint32_t fd)
     case VHOST_MSG_RESULT_OK:
         pr_debug("process succeeded.\n");
         handled = true;
+        if (!(ctx.msg.flags & VHOST_USER_NEED_REPLY))
+            break;
+
+        if (!dev->dev_ops || !dev->dev_ops->get_protocol_features)
+            break;
+
+        uint64_t prot_feature = dev->dev_ops->get_protocol_features(dev);
+        if (!(prot_feature & (1 << VHOST_USER_PROTOCOL_F_REPLY_ACK)))
+            break;
+
+        pr_debug("needs reply.\n");
+        ctx.msg.payload.u64 = 0;
+        ctx.msg.size = sizeof(ctx.msg.payload.u64);
+        ctx.fd_num = 0;
+        send_vhost_reply(dev, fd, &ctx);
         break;
     case VHOST_MSG_RESULT_REPLY:
         pr_debug("processing succeeded and needs reply.\n");
@@ -934,8 +949,10 @@ vhost_user_deinit_device(struct vhost_user_dev *dev)
         return;
     }
 
-    if (dev->vsocket.socket_fd > 0)
+    if (dev->vsocket.socket_fd >= 0) {
         close(dev->vsocket.socket_fd);
+        dev->vsocket.socket_fd = -1;
+    }
 
 	for (i = 0; i < dev->nr_vring; i++) {
         vq = dev->virtqueue[i];
